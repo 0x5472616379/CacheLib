@@ -94,7 +94,7 @@ public class CacheReader
         int currentBlock = entry.StartBlock;
         int chunkCounter = 0;
         CacheBlockType compressionType = CacheBlockType.Uncompressed;
-        
+
         while (bytesRead < entry.Size)
         {
             byte[] header = new byte[CacheConstants.HeaderSize];
@@ -102,7 +102,7 @@ public class CacheReader
             {
                 long blockPosition = currentBlock * CacheConstants.BlockSize;
                 Console.WriteLine($"\n[Block {currentBlock}] Seeking to position: {blockPosition}");
-            
+
                 _dataFile.Seek(blockPosition, SeekOrigin.Begin);
                 _dataFile.Read(header, 0, header.Length);
             }
@@ -112,16 +112,17 @@ public class CacheReader
             int currentChunk = (header[2] << 8) | header[3];
             int nextBlock = (header[4] << 16) | (header[5] << 8) | header[6];
             var nextBlockType = (CacheBlockType)header[7];
-            
+
             Console.WriteLine($"  Header Data: {BitConverter.ToString(header)}");
             Console.WriteLine($"  File ID: {fileId} (0x{fileId:X4})");
             Console.WriteLine($"  Current Chunk: {currentChunk}");
             Console.WriteLine($"  Next Block: {nextBlock}");
-            Console.WriteLine($"  Block Type: {nextBlockType} ({(byte)nextBlockType}) - {StringUtil.GetCompressionDescription(nextBlockType)}");
+            Console.WriteLine(
+                $"  Block Type: {nextBlockType} ({(byte)nextBlockType}) - {StringUtil.GetCompressionDescription(nextBlockType)}");
 
             int remainingBytes = entry.Size - bytesRead;
             int bytesToRead = Math.Min(remainingBytes, CacheConstants.ChunkSize);
-        
+
             Console.WriteLine($"  Reading {bytesToRead} bytes (chunk {chunkCounter++})");
 
             lock (_dataFile)
@@ -135,6 +136,102 @@ public class CacheReader
 
         Console.WriteLine($"\n=== Finished Reading {bytesRead} bytes ===");
         return output;
+    }
+
+
+    public void WriteFile(int indexId, int fileId, byte[] data)
+    {
+        WriteFileInternal(indexId, fileId, data);
+    }
+
+    private void WriteFileInternal(int indexId, int fileId, byte[] data)
+    {
+        /* 1. Update the index entry */
+        int startBlock = (int)((_dataFile.Length + CacheConstants.BlockSize - 1) / CacheConstants.BlockSize);
+        if (startBlock == 0) startBlock = 1; /* First block can't be 0 */
+
+        IndexEntry entry = new IndexEntry(data.Length, startBlock);
+        WriteIndexEntry(indexId, fileId, entry);
+
+        /* 2. Write the file blocks */
+        WriteFileBlocks(entry, data);
+    }
+
+    private void WriteIndexEntry(int indexId, int fileId, IndexEntry entry)
+    {
+        if (indexId < 0 || indexId >= _indexFiles.Length)
+            throw new ArgumentOutOfRangeException(nameof(indexId));
+
+        byte[] buffer = new byte[CacheConstants.IndexEntrySize];
+        buffer[0] = (byte)(entry.Size >> 16);
+        buffer[1] = (byte)(entry.Size >> 8);
+        buffer[2] = (byte)entry.Size;
+        buffer[3] = (byte)(entry.StartBlock >> 16);
+        buffer[4] = (byte)(entry.StartBlock >> 8);
+        buffer[5] = (byte)entry.StartBlock;
+
+        FileStream indexFile = _indexFiles[indexId];
+        lock (indexFile)
+        {
+            long position = fileId * CacheConstants.IndexEntrySize;
+            indexFile.Seek(position, SeekOrigin.Begin);
+            indexFile.Write(buffer, 0, buffer.Length);
+        }
+    }
+
+    private void WriteFileBlocks(IndexEntry entry, byte[] data)
+    {
+        int bytesWritten = 0;
+        int currentBlock = entry.StartBlock;
+        int part = 0;
+
+        while (bytesWritten < entry.Size)
+        {
+            /* Calculate next block */
+            int nextBlock = 0;
+            if (bytesWritten + CacheConstants.ChunkSize < entry.Size)
+            {
+                nextBlock = (int)((_dataFile.Length + CacheConstants.BlockSize - 1) / CacheConstants.BlockSize);
+                if (nextBlock == currentBlock) nextBlock++;
+            }
+
+            /* Prepare header */
+            byte[] header = new byte[CacheConstants.HeaderSize];
+            header[0] = (byte)(0 >> 8); /* File ID high byte (always 0 for archive I believe) */
+            header[1] = (byte)0; /* File ID low byte */
+            header[2] = (byte)(part >> 8);
+            header[3] = (byte)part;
+            header[4] = (byte)(nextBlock >> 16);
+            header[5] = (byte)(nextBlock >> 8);
+            header[6] = (byte)nextBlock;
+            header[7] = (byte)CacheBlockType.BZip2; /* Compression type, 1 in this case, just like how we read it */
+
+            /* Write the block */
+            lock (_dataFile)
+            {
+                /* Seek to block position*/
+                long blockPosition = currentBlock * CacheConstants.BlockSize;
+                _dataFile.Seek(blockPosition, SeekOrigin.Begin);
+
+                /* Write header */
+                _dataFile.Write(header, 0, header.Length);
+
+                /* Write data */
+                int bytesToWrite = Math.Min(CacheConstants.ChunkSize, data.Length - bytesWritten);
+                _dataFile.Write(data, bytesWritten, bytesToWrite);
+
+                /* Pad with zeros if needed */
+                if (bytesToWrite < CacheConstants.ChunkSize)
+                {
+                    byte[] padding = new byte[CacheConstants.ChunkSize - bytesToWrite];
+                    _dataFile.Write(padding, 0, padding.Length);
+                }
+            }
+
+            bytesWritten += CacheConstants.ChunkSize;
+            currentBlock = nextBlock;
+            part++;
+        }
     }
 
     public void Close()
