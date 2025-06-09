@@ -2,6 +2,8 @@
 
 namespace CacheLib;
 
+/* This works perfectly */
+
 public static class BZip2Helper
 {
     // RuneScape BZip2 files lack headers, so we need to add them

@@ -3,6 +3,7 @@
 public class ItemDefDecoder
 {
     public ItemDefinition[] Definitions { get; set; }
+
     public void Run(byte[] idx, byte[] data)
     {
         try
@@ -24,7 +25,7 @@ public class ItemDefDecoder
                 for (var i = 0; i < count; i++)
                 {
                     dataReader.BaseStream.Position = indices[i];
-                    Definitions[i] = Decode(dataReader);
+                    Definitions[i] = Decode(i, dataReader);
                 }
             }
         }
@@ -33,10 +34,12 @@ public class ItemDefDecoder
             throw new Exception("Error decoding ItemDefinitions.", e);
         }
     }
-    
-    public static ItemDefinition Decode(BinaryReader buffer)
+
+    public static ItemDefinition Decode(int id, BinaryReader buffer)
     {
         var definition = new ItemDefinition();
+        definition.Id = id;
+        definition.Reset();
 
         while (true)
         {
@@ -124,6 +127,11 @@ public class ItemDefDecoder
             }
             else if (opcode >= 30 && opcode < 35)
             {
+                if (definition.Options == null)
+                {
+                    definition.Options = new String[5];
+                }
+                
                 var str = buffer.ReadSafeString();
                 if (str.Equals("hidden", StringComparison.OrdinalIgnoreCase)) str = null;
 
@@ -133,6 +141,11 @@ public class ItemDefDecoder
             }
             else if (opcode >= 35 && opcode < 40)
             {
+                if (definition.InventoryOptions == null)
+                {
+                    definition.InventoryOptions = new String[5];
+                }
+
                 var idx = opcode - 35;
                 var action = buffer.ReadSafeString();
                 definition.InventoryOptions[idx] = action;
@@ -186,11 +199,12 @@ public class ItemDefDecoder
             }
             else if (opcode >= 100 && opcode < 110)
             {
-                if (definition.StackId == null) {
+                if (definition.StackId == null)
+                {
                     definition.StackId = new int[10];
                     definition.StackCount = new int[10];
                 }
-                
+
                 definition.StackId[opcode - 100] = buffer.ReadInt16();
                 definition.StackCount[opcode - 100] = buffer.ReadInt16();
             }
@@ -212,7 +226,7 @@ public class ItemDefDecoder
             }
             else if (opcode == 114)
             {
-                definition.LightAttenuation = buffer.ReadByte();
+                definition.LightAttenuation = buffer.ReadByte() * 5;
             }
             else if (opcode == 115)
             {

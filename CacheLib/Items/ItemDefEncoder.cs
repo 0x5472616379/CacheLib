@@ -2,32 +2,13 @@
 
 public class ItemDefEncoder
 {
-    public static (byte[] idx, byte[] dat) Encode(ItemDefinition[] definitions)
+    public static void EncodeDefinition(ItemDefinition def, BinaryWriter writer)
     {
-        using (var msData = new MemoryStream())
-        using (var msIdx = new MemoryStream())
-        using (var dataWriter = new BinaryWriter(msData))
-        using (var idxWriter = new BinaryWriter(msIdx))
-        {
-            // Write item count
-            idxWriter.WriteInt16BigEndian((short)definitions.Length);
-            
-            // First pass - write placeholder lengths
-            var positions = new long[definitions.Length];
-            for (int i = 0; i < definitions.Length; i++)
-            {
-                positions[i] = msData.Position;
-                EncodeDefinition(definitions[i], dataWriter);
-                var length = (short)(msData.Position - positions[i]);
-                idxWriter.WriteInt16BigEndian(length);
-            }
-            
-            return (msIdx.ToArray(), msData.ToArray());
-        }
-    }
+        if (def == null)
+            throw new ArgumentNullException(nameof(def));
+        if (writer == null)
+            throw new ArgumentNullException(nameof(writer));
 
-    private static void EncodeDefinition(ItemDefinition def, BinaryWriter writer)
-    {
         if (def.ModelId != 0)
         {
             writer.Write((byte)1);
@@ -46,7 +27,7 @@ public class ItemDefEncoder
             writer.WriteSafeString(def.Examine);
         }
         
-        if (def.IconZoom != 0)
+        if (def.IconZoom != 2000) // Default is 2000
         {
             writer.Write((byte)4);
             writer.WriteInt16BigEndian((short)def.IconZoom);
@@ -76,17 +57,12 @@ public class ItemDefEncoder
             writer.WriteInt16BigEndian((short)def.IconOffsetY);
         }
         
-        if (false)
-        {
-            writer.WriteInt16BigEndian(0);
-        }
-        
         if (def.Stackable)
         {
             writer.Write((byte)11);
         }
         
-        if (def.Cost != 0)
+        if (def.Cost != 1) // Default is 1
         {
             writer.Write((byte)12);
             writer.WriteInt32BigEndian(def.Cost);
@@ -97,52 +73,59 @@ public class ItemDefEncoder
             writer.Write((byte)16);
         }
         
-        if (def.MaleModelId0 != 0 || def.MaleOffsetY != 0)
+        if (def.MaleModelId0 != -1 || def.MaleOffsetY != 0)
         {
             writer.Write((byte)23);
             writer.WriteInt16BigEndian((short)def.MaleModelId0);
             writer.Write((byte)def.MaleOffsetY);
         }
         
-        if (def.MaleModelId1 != 0)
+        if (def.MaleModelId1 != -1)
         {
             writer.Write((byte)24);
             writer.WriteInt16BigEndian((short)def.MaleModelId1);
         }
         
-        if (def.FemaleModelId0 != 0 || def.FemaleOffsetY != 0)
+        if (def.FemaleModelId0 != -1 || def.FemaleOffsetY != 0)
         {
             writer.Write((byte)25);
             writer.WriteInt16BigEndian((short)def.FemaleModelId0);
             writer.Write((byte)def.FemaleOffsetY);
         }
         
-        if (def.FemaleModelId1 != 0)
+        if (def.FemaleModelId1 != -1)
         {
             writer.Write((byte)26);
-            writer.WriteInt16BigEndian(0);
+            writer.WriteInt16BigEndian(0); // Unknown value often seen in original data
             writer.WriteInt16BigEndian((short)def.FemaleModelId1);
         }
         
-        for (int i = 0; i < 5; i++)
+        if (def.Options != null)
         {
-            if (!string.IsNullOrEmpty(def.Options[i]))
+            for (int i = 0; i < Math.Min(5, def.Options.Length); i++)
             {
-                writer.Write((byte)(30 + i));
-                writer.WriteSafeString(def.Options[i]);
+                if (!string.IsNullOrEmpty(def.Options[i]))
+                {
+                    writer.Write((byte)(30 + i));
+                    writer.WriteSafeString(def.Options[i]);
+                }
             }
         }
         
-        for (int i = 0; i < 5; i++)
+        if (def.InventoryOptions != null)
         {
-            if (!string.IsNullOrEmpty(def.InventoryOptions[i]))
+            for (int i = 0; i < Math.Min(5, def.InventoryOptions.Length); i++)
             {
-                writer.Write((byte)(35 + i));
-                writer.WriteSafeString(def.InventoryOptions[i]);
+                if (!string.IsNullOrEmpty(def.InventoryOptions[i]))
+                {
+                    writer.Write((byte)(35 + i));
+                    writer.WriteSafeString(def.InventoryOptions[i]);
+                }
             }
         }
         
-        if (def.SrcColor != null && def.SrcColor.Length > 0)
+        if (def.SrcColor != null && def.DstColor != null && 
+            def.SrcColor.Length > 0 && def.SrcColor.Length == def.DstColor.Length)
         {
             writer.Write((byte)40);
             writer.Write((byte)def.SrcColor.Length);
@@ -153,37 +136,37 @@ public class ItemDefEncoder
             }
         }
         
-        if (def.MaleModelId2 != 0)
+        if (def.MaleModelId2 != -1)
         {
             writer.Write((byte)78);
             writer.WriteInt16BigEndian((short)def.MaleModelId2);
         }
         
-        if (def.FemaleModelId2 != 0)
+        if (def.FemaleModelId2 != -1)
         {
             writer.Write((byte)79);
             writer.WriteInt16BigEndian((short)def.FemaleModelId2);
         }
         
-        if (def.MaleHeadModelId0 != 0)
+        if (def.MaleHeadModelId0 != -1)
         {
             writer.Write((byte)90);
             writer.WriteInt16BigEndian((short)def.MaleHeadModelId0);
         }
         
-        if (def.FemaleHeadModelId0 != 0)
+        if (def.FemaleHeadModelId0 != -1)
         {
             writer.Write((byte)91);
             writer.WriteInt16BigEndian((short)def.FemaleHeadModelId0);
         }
         
-        if (def.MaleHeadModelId1 != 0)
+        if (def.MaleHeadModelId1 != -1)
         {
             writer.Write((byte)92);
             writer.WriteInt16BigEndian((short)def.MaleHeadModelId1);
         }
         
-        if (def.FemaleHeadModelId1 != 0)
+        if (def.FemaleHeadModelId1 != -1)
         {
             writer.Write((byte)93);
             writer.WriteInt16BigEndian((short)def.FemaleHeadModelId1);
@@ -195,23 +178,23 @@ public class ItemDefEncoder
             writer.WriteInt16BigEndian((short)def.IconRoll);
         }
         
-        if (def.LinkedId != 0)
+        if (def.LinkedId != -1)
         {
             writer.Write((byte)97);
             writer.WriteInt16BigEndian((short)def.LinkedId);
         }
         
-        if (def.CertificateId != 0)
+        if (def.CertificateId != -1)
         {
             writer.Write((byte)98);
             writer.WriteInt16BigEndian((short)def.CertificateId);
         }
         
-        if (def.StackId != null)
+        if (def.StackId != null && def.StackCount != null)
         {
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < Math.Min(10, def.StackId.Length); i++)
             {
-                if (def.StackId[i] != 0 || def.StackCount[i] != 0)
+                if (i < def.StackCount.Length && (def.StackId[i] != 0 || def.StackCount[i] != 0))
                 {
                     writer.Write((byte)(100 + i));
                     writer.WriteInt16BigEndian((short)def.StackId[i]);
@@ -220,20 +203,19 @@ public class ItemDefEncoder
             }
         }
         
-        // Scale settings
-        if (def.ScaleX != 0)
+        if (def.ScaleX != 128) // Default is 128
         {
             writer.Write((byte)110);
             writer.WriteInt16BigEndian((short)def.ScaleX);
         }
         
-        if (def.ScaleZ != 0)
+        if (def.ScaleZ != 128)
         {
             writer.Write((byte)111);
             writer.WriteInt16BigEndian((short)def.ScaleZ);
         }
         
-        if (def.ScaleY != 0)
+        if (def.ScaleY != 128)
         {
             writer.Write((byte)112);
             writer.WriteInt16BigEndian((short)def.ScaleY);
@@ -248,7 +230,7 @@ public class ItemDefEncoder
         if (def.LightAttenuation != 0)
         {
             writer.Write((byte)114);
-            writer.Write((byte)def.LightAttenuation);
+            writer.Write((byte)(def.LightAttenuation / 5)); // Stored as 1/5th of actual value
         }
         
         if (def.Team != 0)
