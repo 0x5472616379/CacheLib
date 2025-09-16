@@ -2,11 +2,8 @@
 
 namespace CacheLib;
 
-/* This works perfectly */
-
 public static class BZip2Helper
 {
-    // RuneScape BZip2 files lack headers, so we need to add them
     private static readonly byte[] BZip2Header = "BZh1"u8.ToArray();
 
     public static byte[] Decompress(byte[] compressedData)
@@ -15,15 +12,14 @@ public static class BZip2Helper
         byte[] withHeader = new byte[compressedData.Length + BZip2Header.Length];
         Buffer.BlockCopy(BZip2Header, 0, withHeader, 0, BZip2Header.Length);
         Buffer.BlockCopy(compressedData, 0, withHeader, BZip2Header.Length, compressedData.Length);
-
+    
         using var input = new MemoryStream(withHeader);
         using var output = new MemoryStream();
         using var decompressor = new BZip2InputStream(input);
-
         decompressor.CopyTo(output);
         return output.ToArray();
     }
-
+    
     public static byte[] Compress(byte[] data)
     {
         using var output = new MemoryStream();

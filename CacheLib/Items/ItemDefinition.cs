@@ -12,6 +12,7 @@ public class ItemDefinition
     public int IconRoll { get; set; }
     public int IconOffsetX { get; set; }
     public int IconOffsetY { get; set; }
+    public int UnusedOpCode10 { get; set; }
     public bool Stackable { get; set; }
     public int Cost { get; set; } = 1;
     public bool Members { get; set; }
@@ -22,20 +23,20 @@ public class ItemDefinition
     public int MaleModelId2 { get; set; } = -1;
     public int MaleHeadModelId0 { get; set; } = -1;
     public int MaleHeadModelId1 { get; set; } = -1;
-    public byte MaleOffsetY { get; set; }
+    public sbyte MaleOffsetY { get; set; }
 
     public int FemaleModelId0 { get; set; } = -1;
     public int FemaleModelId1 { get; set; } = -1;
     public int FemaleModelId2 { get; set; } = -1;
     public int FemaleHeadModelId0 { get; set; } = -1;
     public int FemaleHeadModelId1 { get; set; } = -1;
-    public byte FemaleOffsetY { get; set; }
+    public sbyte FemaleOffsetY { get; set; }
 
     public string[] Options { get; set; }
     public string[] InventoryOptions { get; set; }
 
-    public int[] SrcColor { get; set; }
-    public int[] DstColor { get; set; }
+    public ushort[] SrcColor { get; set; }
+    public ushort[] DstColor { get; set; }
 
     public int[] StackId { get; set; }
     public int[] StackCount { get; set; }

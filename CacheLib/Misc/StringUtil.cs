@@ -16,4 +16,9 @@ public class StringUtil
         CacheBlockType.GZip => "GZIP compressed",
         _ => "Unknown compression"
     };
+    
+    public static int Hash(string name)
+    {
+        return name.ToUpper().ToCharArray().Aggregate(0, (hash, character) => hash * 61 + character - 32);
+    }
 }

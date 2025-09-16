@@ -7,13 +7,13 @@ public static class BinaryReaderExtensions
     public static int ReadInt16BigEndian(this BinaryReader reader)
     {
         byte[] bytes = reader.ReadBytes(2);
-        return (bytes[0] << 8) | bytes[1];
+        return (short)((bytes[0] << 8) | bytes[1]);
     }
-
-    public static int ReadUnsignedMedium(this BinaryReader reader)
+    
+    public static ushort ReadUInt16BigEndian(this BinaryReader reader)
     {
-        byte[] bytes = reader.ReadBytes(3);
-        return (bytes[0] << 16) | (bytes[1] << 8) | bytes[2];
+        byte[] bytes = reader.ReadBytes(2);
+        return (ushort)((bytes[0] << 8) | bytes[1]);
     }
 
     public static int ReadInt32BigEndian(this BinaryReader reader)
@@ -22,24 +22,18 @@ public static class BinaryReaderExtensions
         return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
     }
     
-    public static ushort ReadUInt16BigEndian(this BinaryReader br)
+    public static int ReadUnsignedMedium(this BinaryReader reader)
     {
-        byte[] bytes = br.ReadBytes(2);
-        return (ushort)((bytes[0] << 8) | bytes[1]);
+        byte[] bytes = reader.ReadBytes(3);
+        return (bytes[0] << 16) | (bytes[1] << 8) | bytes[2];
     }
-
-    public const int StringTerminator = 10;
-    public static string ReadSafeString(this BinaryReader reader)
-    {
-        var builder = new StringBuilder();
+    
+    public static string ReadCacheString(this BinaryReader reader) {
+        var bytes = new List<byte>();
         byte b;
-        while ((b = reader.ReadByte()) != StringTerminator)
-            builder.Append((char)b);
-        return builder.ToString();
-    }
-
-    public static int ReadUnsignedMedium(this MemoryStream stream)
-    {
-        return (stream.ReadByte() << 16) | (stream.ReadByte() << 8) | stream.ReadByte();
+        while ((b = reader.ReadByte()) != 10) {
+            bytes.Add(b);
+        }
+        return Encoding.GetEncoding("ISO-8859-1").GetString(bytes.ToArray());
     }
 }

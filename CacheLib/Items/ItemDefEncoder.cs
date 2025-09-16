@@ -1,244 +1,217 @@
-﻿namespace CacheLib.Items;
+﻿using System.IO;
+using System.Text;
+using CacheLib;
+using CacheLib.Items;
 
 public class ItemDefEncoder
 {
-    public static void EncodeDefinition(ItemDefinition def, BinaryWriter writer)
+    public void Run(ItemDefinition[] definitions, string outputFilePath)
     {
-        if (def == null)
-            throw new ArgumentNullException(nameof(def));
-        if (writer == null)
-            throw new ArgumentNullException(nameof(writer));
+        try
+        {
+            using (var msData = new MemoryStream())
+            using (var msIdx = new MemoryStream())
+            using (var dataWriter = new BinaryWriter(msData))
+            using (var idxWriter = new BinaryWriter(msIdx))
+            {
+                idxWriter.WriteUInt16BigEndian((ushort)definitions.Length);
 
-        if (def.ModelId != 0)
-        {
-            writer.Write((byte)1);
-            writer.WriteInt16BigEndian((short)def.ModelId);
-        }
-        
-        if (!string.IsNullOrEmpty(def.Name))
-        {
-            writer.Write((byte)2);
-            writer.WriteSafeString(def.Name);
-        }
-        
-        if (!string.IsNullOrEmpty(def.Examine))
-        {
-            writer.Write((byte)3);
-            writer.WriteSafeString(def.Examine);
-        }
-        
-        if (def.IconZoom != 2000) // Default is 2000
-        {
-            writer.Write((byte)4);
-            writer.WriteInt16BigEndian((short)def.IconZoom);
-        }
-        
-        if (def.IconPitch != 0)
-        {
-            writer.Write((byte)5);
-            writer.WriteInt16BigEndian((short)def.IconPitch);
-        }
-        
-        if (def.IconYaw != 0)
-        {
-            writer.Write((byte)6);
-            writer.WriteInt16BigEndian((short)def.IconYaw);
-        }
-        
-        if (def.IconOffsetX != 0)
-        {
-            writer.Write((byte)7);
-            writer.WriteInt16BigEndian((short)def.IconOffsetX);
-        }
-        
-        if (def.IconOffsetY != 0)
-        {
-            writer.Write((byte)8);
-            writer.WriteInt16BigEndian((short)def.IconOffsetY);
-        }
-        
-        if (def.Stackable)
-        {
-            writer.Write((byte)11);
-        }
-        
-        if (def.Cost != 1) // Default is 1
-        {
-            writer.Write((byte)12);
-            writer.WriteInt32BigEndian(def.Cost);
-        }
-        
-        if (def.Members)
-        {
-            writer.Write((byte)16);
-        }
-        
-        if (def.MaleModelId0 != -1 || def.MaleOffsetY != 0)
-        {
-            writer.Write((byte)23);
-            writer.WriteInt16BigEndian((short)def.MaleModelId0);
-            writer.Write((byte)def.MaleOffsetY);
-        }
-        
-        if (def.MaleModelId1 != -1)
-        {
-            writer.Write((byte)24);
-            writer.WriteInt16BigEndian((short)def.MaleModelId1);
-        }
-        
-        if (def.FemaleModelId0 != -1 || def.FemaleOffsetY != 0)
-        {
-            writer.Write((byte)25);
-            writer.WriteInt16BigEndian((short)def.FemaleModelId0);
-            writer.Write((byte)def.FemaleOffsetY);
-        }
-        
-        if (def.FemaleModelId1 != -1)
-        {
-            writer.Write((byte)26);
-            writer.WriteInt16BigEndian(0); // Unknown value often seen in original data
-            writer.WriteInt16BigEndian((short)def.FemaleModelId1);
-        }
-        
-        if (def.Options != null)
-        {
-            for (int i = 0; i < Math.Min(5, def.Options.Length); i++)
-            {
-                if (!string.IsNullOrEmpty(def.Options[i]))
+                int totalLength = 2;
+
+                foreach (var definition in definitions)
                 {
-                    writer.Write((byte)(30 + i));
-                    writer.WriteSafeString(def.Options[i]);
+                    var definitionBytes = Encode(definition);
+                    
+                    idxWriter.WriteUInt16BigEndian((ushort)definitionBytes.Length);
+                    totalLength += definitionBytes.Length;
+                    
+                    dataWriter.Write(definitionBytes);
+                }
+
+                File.WriteAllBytes($"{outputFilePath}.dat", msData.ToArray());
+                File.WriteAllBytes($"{outputFilePath}.idx", msIdx.ToArray());
+            }
+        }
+        catch (IOException e)
+        {
+            throw new Exception("Error encoding ItemDefinitions.", e);
+        }
+    }
+
+    public static byte[] Encode(ItemDefinition definition)
+    {
+        using (var ms = new MemoryStream())
+        using (var writer = new BinaryWriter(ms))
+        {
+            if (definition.ModelId != 0) { 
+                writer.Write((byte)1);
+                writer.WriteUInt16BigEndian((ushort)definition.ModelId);
+            }
+            if (definition.Name != null) {
+                writer.Write((byte)2);
+                writer.WriteCacheString(definition.Name);
+            }
+            if (definition.Examine != null) {
+                writer.Write((byte)3);
+                writer.WriteCacheString(definition.Examine);
+            }
+            if (definition.IconZoom != 2000) {
+                writer.Write((byte)4);
+                writer.WriteUInt16BigEndian((ushort)definition.IconZoom);
+            }
+            if (definition.IconPitch != 0) {
+                writer.Write((byte)5);
+                writer.WriteUInt16BigEndian((ushort)definition.IconPitch);
+            }
+            if (definition.IconYaw != 0) {
+                writer.Write((byte)6);
+                writer.WriteUInt16BigEndian((ushort)definition.IconYaw);
+            }
+            if (definition.IconOffsetX != 0) {
+                writer.Write((byte)7);
+                writer.WriteInt16BigEndian((short)definition.IconOffsetX);
+            }
+            if (definition.IconOffsetY != 0) {
+                writer.Write((byte)8);
+                writer.WriteInt16BigEndian((short)definition.IconOffsetY);
+            }
+            if (definition.UnusedOpCode10 != 0) {
+                writer.Write((byte)10);
+                writer.WriteUInt16BigEndian((ushort)definition.UnusedOpCode10);
+            }
+            if (definition.Stackable) {
+                writer.Write((byte)11);
+            }
+            if (definition.Cost != 1) {
+                writer.Write((byte)12);
+                writer.WriteInt32BigEndian(definition.Cost);
+            }
+            if (definition.Members) {
+                writer.Write((byte)16);
+            }
+            if (definition.MaleModelId0 != -1 || definition.MaleOffsetY != 0) {
+                writer.Write((byte)23);
+                writer.WriteUInt16BigEndian((ushort)definition.MaleModelId0);
+                writer.Write((sbyte)definition.MaleOffsetY);
+            }
+            if (definition.MaleModelId1 != -1) {
+                writer.Write((byte)24);
+                writer.WriteUInt16BigEndian((ushort)definition.MaleModelId1);
+            }
+            if (definition.FemaleModelId0 != -1 || definition.FemaleOffsetY != 0) {
+                writer.Write((byte)25);
+                writer.WriteUInt16BigEndian((ushort)definition.FemaleModelId0);
+                writer.Write((sbyte)definition.FemaleOffsetY);
+            }
+            if (definition.FemaleModelId1 != -1) {
+                writer.Write((byte)26);
+                writer.WriteUInt16BigEndian((ushort)definition.FemaleModelId1);
+            }
+
+            if (definition.Options != null) {
+                for (int i = 0; i < definition.Options.Length; i++) {
+                    var option = definition.Options[i];
+                    if (option != null) {
+                        writer.Write((byte)(30 + i));
+                        writer.WriteCacheString(option);
+                    }
                 }
             }
-        }
-        
-        if (def.InventoryOptions != null)
-        {
-            for (int i = 0; i < Math.Min(5, def.InventoryOptions.Length); i++)
-            {
-                if (!string.IsNullOrEmpty(def.InventoryOptions[i]))
-                {
-                    writer.Write((byte)(35 + i));
-                    writer.WriteSafeString(def.InventoryOptions[i]);
+
+            if (definition.InventoryOptions != null) {
+                for (int i = 0; i < definition.InventoryOptions.Length; i++) {
+                    var invOption = definition.InventoryOptions[i];
+                    if (invOption != null) {
+                        writer.Write((byte)(35 + i));
+                        writer.WriteCacheString(invOption);
+                    }
                 }
             }
-        }
-        
-        if (def.SrcColor != null && def.DstColor != null && 
-            def.SrcColor.Length > 0 && def.SrcColor.Length == def.DstColor.Length)
-        {
-            writer.Write((byte)40);
-            writer.Write((byte)def.SrcColor.Length);
-            for (int i = 0; i < def.SrcColor.Length; i++)
-            {
-                writer.WriteInt16BigEndian((short)def.SrcColor[i]);
-                writer.WriteInt16BigEndian((short)def.DstColor[i]);
-            }
-        }
-        
-        if (def.MaleModelId2 != -1)
-        {
-            writer.Write((byte)78);
-            writer.WriteInt16BigEndian((short)def.MaleModelId2);
-        }
-        
-        if (def.FemaleModelId2 != -1)
-        {
-            writer.Write((byte)79);
-            writer.WriteInt16BigEndian((short)def.FemaleModelId2);
-        }
-        
-        if (def.MaleHeadModelId0 != -1)
-        {
-            writer.Write((byte)90);
-            writer.WriteInt16BigEndian((short)def.MaleHeadModelId0);
-        }
-        
-        if (def.FemaleHeadModelId0 != -1)
-        {
-            writer.Write((byte)91);
-            writer.WriteInt16BigEndian((short)def.FemaleHeadModelId0);
-        }
-        
-        if (def.MaleHeadModelId1 != -1)
-        {
-            writer.Write((byte)92);
-            writer.WriteInt16BigEndian((short)def.MaleHeadModelId1);
-        }
-        
-        if (def.FemaleHeadModelId1 != -1)
-        {
-            writer.Write((byte)93);
-            writer.WriteInt16BigEndian((short)def.FemaleHeadModelId1);
-        }
-        
-        if (def.IconRoll != 0)
-        {
-            writer.Write((byte)95);
-            writer.WriteInt16BigEndian((short)def.IconRoll);
-        }
-        
-        if (def.LinkedId != -1)
-        {
-            writer.Write((byte)97);
-            writer.WriteInt16BigEndian((short)def.LinkedId);
-        }
-        
-        if (def.CertificateId != -1)
-        {
-            writer.Write((byte)98);
-            writer.WriteInt16BigEndian((short)def.CertificateId);
-        }
-        
-        if (def.StackId != null && def.StackCount != null)
-        {
-            for (int i = 0; i < Math.Min(10, def.StackId.Length); i++)
-            {
-                if (i < def.StackCount.Length && (def.StackId[i] != 0 || def.StackCount[i] != 0))
-                {
-                    writer.Write((byte)(100 + i));
-                    writer.WriteInt16BigEndian((short)def.StackId[i]);
-                    writer.WriteInt16BigEndian((short)def.StackCount[i]);
+
+            if (definition.SrcColor != null) {
+                writer.Write((byte)40);
+                writer.Write((byte)definition.SrcColor.Length);
+                for (int i = 0; i < definition.SrcColor.Length; i++) {
+                    writer.WriteUInt16BigEndian(definition.SrcColor[i]);
+                    writer.WriteUInt16BigEndian(definition.DstColor[i]);
                 }
             }
+
+            if (definition.MaleModelId2 != -1) {
+                writer.Write((byte)78);
+                writer.WriteUInt16BigEndian((ushort)definition.MaleModelId2);
+            }
+            if (definition.FemaleModelId2 != -1) {
+                writer.Write((byte)79);
+                writer.WriteUInt16BigEndian((ushort)definition.FemaleModelId2);
+            }
+            if (definition.MaleHeadModelId0 != -1) {
+                writer.Write((byte)90);
+                writer.WriteUInt16BigEndian((ushort)definition.MaleHeadModelId0);
+            }
+            if (definition.FemaleHeadModelId0 != -1) {
+                writer.Write((byte)91);
+                writer.WriteUInt16BigEndian((ushort)definition.FemaleHeadModelId0);
+            }
+            if (definition.MaleHeadModelId1 != -1) {
+                writer.Write((byte)92);
+                writer.WriteUInt16BigEndian((ushort)definition.MaleHeadModelId1);
+            }
+            if (definition.FemaleHeadModelId1 != -1) {
+                writer.Write((byte)93);
+                writer.WriteUInt16BigEndian((ushort)definition.FemaleHeadModelId1);
+            }
+            if (definition.IconRoll != 0) {
+                writer.Write((byte)95);
+                writer.WriteUInt16BigEndian((ushort)definition.IconRoll);
+            }
+            if (definition.LinkedId != -1) {
+                writer.Write((byte)97);
+                writer.WriteUInt16BigEndian((ushort)definition.LinkedId);
+            }
+            if (definition.CertificateId != -1) {
+                writer.Write((byte)98);
+                writer.WriteUInt16BigEndian((ushort)definition.CertificateId);
+            }
+
+            if (definition.StackId != null) {
+                for (int i = 0; i < definition.StackId.Length; i++) {
+                    if (definition.StackId[i] != 0 || definition.StackCount[i] != 0) {
+                        writer.Write((byte)(100 + i));
+                        writer.WriteUInt16BigEndian((ushort)definition.StackId[i]);
+                        writer.WriteUInt16BigEndian((ushort)definition.StackCount[i]);
+                    }
+                }
+            }
+            
+            if (definition.ScaleX != 128) {
+                writer.Write((byte)110);
+                writer.WriteUInt16BigEndian((ushort)definition.ScaleX);
+            }
+            if (definition.ScaleZ != 128) {
+                writer.Write((byte)111);
+                writer.WriteUInt16BigEndian((ushort)definition.ScaleZ);
+            }
+            if (definition.ScaleY != 128) {
+                writer.Write((byte)112);
+                writer.WriteUInt16BigEndian((ushort)definition.ScaleY);
+            }
+            if (definition.LightAmbient != 0) {
+                writer.Write((byte)113);
+                writer.Write((sbyte)definition.LightAmbient);
+            }
+            if (definition.LightAttenuation != 0) {
+                writer.Write((byte)114);
+                writer.Write((sbyte)(definition.LightAttenuation / 5));
+            }
+            if (definition.Team != 0) {
+                writer.Write((byte)115);
+                writer.Write((byte)definition.Team);
+            }
+
+            writer.Write((byte)0);
+
+            return ms.ToArray();
         }
-        
-        if (def.ScaleX != 128) // Default is 128
-        {
-            writer.Write((byte)110);
-            writer.WriteInt16BigEndian((short)def.ScaleX);
-        }
-        
-        if (def.ScaleZ != 128)
-        {
-            writer.Write((byte)111);
-            writer.WriteInt16BigEndian((short)def.ScaleZ);
-        }
-        
-        if (def.ScaleY != 128)
-        {
-            writer.Write((byte)112);
-            writer.WriteInt16BigEndian((short)def.ScaleY);
-        }
-        
-        if (def.LightAmbient != 0)
-        {
-            writer.Write((byte)113);
-            writer.Write((byte)def.LightAmbient);
-        }
-        
-        if (def.LightAttenuation != 0)
-        {
-            writer.Write((byte)114);
-            writer.Write((byte)(def.LightAttenuation / 5)); // Stored as 1/5th of actual value
-        }
-        
-        if (def.Team != 0)
-        {
-            writer.Write((byte)115);
-            writer.Write((byte)def.Team);
-        }
-        
-        writer.Write((byte)0);
     }
 }
