@@ -2,6 +2,7 @@
 
 public class ItemDefinition
 {
+    public List<(byte opcode, object? value)> RawOpcodes { get; } = new();
     public int Id { get; set; } = -1;
     public int ModelId { get; set; }
     public string Name { get; set; }

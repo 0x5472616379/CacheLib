@@ -1,4 +1,5 @@
-﻿using CacheLib;
+﻿using System.Text;
+using CacheLib;
 
 var cachePath = "cache";
 string outputPath = "output_cache";

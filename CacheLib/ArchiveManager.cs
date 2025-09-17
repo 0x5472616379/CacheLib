@@ -175,7 +175,7 @@ public class ArchiveManager : IDisposable
                         }
                     }
 
-                    Files.Add(new ArchiveFile(id, fileData, compressedSize, decompressedSize));
+                    Files.Add(new ArchiveFile(id, fileData, compressedSize, decompressedSize, isCompressed));
                 }
                 catch (Exception ex)
                 {
@@ -212,12 +212,14 @@ public class ArchiveFile
     public byte[] Data { get; set; }
     public int CompressedSize { get; set; }
     public int DecompressedSize { get; set; }
+    public bool WasCompressed { get; set; }
 
-    public ArchiveFile(int id, byte[] data, int compressedSize, int decompressedSize)
+    public ArchiveFile(int id, byte[] data, int compressedSize, int decompressedSize, bool wasCompressed)
     {
         Id = id;
         Data = data;
         CompressedSize = compressedSize;
         DecompressedSize = decompressedSize;
+        WasCompressed = wasCompressed;
     }
 }
